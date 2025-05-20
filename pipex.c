@@ -22,27 +22,41 @@
 void    child_process(char **argv, char **envp, int *fd)//Esta función se ejecuta dentro del proceso hijo. Su objetivo es ejecutar cmd1.
 {
     int     filein;//// Descriptor de archivo para file1.
-    
-    filein = open(argv[1], O_RDONLY, 0777);
-    if (filein == -1)
+    // (Paso C1: Abrir el archivo de entrada)
+    filein = open(argv[1], O_RDONLY, 0777);  // argv[1] es file1. O_RDONLY = solo lectura.
+    if (filein == -1)   // Si open() falla.
             error();
-    dup2(fd[1], STDOUT_FILENO);
-    dup2(filein, STDIN_FILENO);
-    close(fd[0]);
-    execute(argv[2], envp);
+    // (Paso C2: Redirigir la salida estándar (stdout) a la tubería)   
+    dup2(fd[1], STDOUT_FILENO); // STDOUT_FILENO (usualmente 1) ahora apunta a fd[1] (escritura de la tubería).
+    // (Paso C3: Redirigir la entrada estándar (stdin) al archivo de entrada)
+    dup2(filein, STDIN_FILENO);  // STDIN_FILENO (usualmente 0) ahora apunta a filein.
+    // (Paso C4: Cerrar los extremos no necesarios de la tubería y el archivo)
+    close(fd[0]);   // El hijo no leerá de la tubería, así que cierra fd[0].
+// close(fd[1]); // fd[1] no se cierra aquí explícitamente porque dup2 lo hace implicitamente si STDOUT_FILENO ya estaba abierto, y execve cerrará todos los descriptores de archivo no marcados con FD_CLOEXEC. Sin embargo, es buena práctica cerrarlo si no se va a usar más después de dup2 y antes de execve.
+ // close(filein); // Similar a fd[1] por dup2.
+ // (Paso C5: Ejecutar el primer comando)
+    execute(argv[2], envp); // argv[2] es cmd1.
 }
 
 void    parent_process(char **argv, char **envp, int *fd)
 {
-    int     fileout;
-
+    int     fileout;    // Descriptor de archivo para file2.
+    // (Paso P1: Abrir el archivo de salida)
+    // argv[4] es file2. O_WRONLY = solo escritura, O_CREAT = crear si no existe, O_TRUNC = truncar si existe.
     fileout = open(argv[4], O_WRONLY | O_CREAT | O_TRUNC, 0777);
-    if (fileout == -1)
+    if (fileout == -1)  // Si open() falla
             error();
-    dup2(fd[0], STDIN_FILENO);
-    dup2(fileout, STDOUT_FILENO);
-    close(fd[1]);
-    execute(argv[3], envp);
+    // (Paso P2: Redirigir la entrada estándar (stdin) a la tubería)
+    dup2(fd[0], STDIN_FILENO);  // STDIN_FILENO ahora apunta a fd[0] (lectura de la tubería).
+    // (Paso P3: Redirigir la salida estándar (stdout) al archivo de salida)
+    dup2(fileout, STDOUT_FILENO);   // STDOUT_FILENO ahora apunta a fileout
+    // (Paso P4: Cerrar los extremos no necesarios de la tubería y el archivo)
+    close(fd[1]);   // El padre no escribirá en la tubería, así que cierra fd[1].
+    // close(fd[0]); // Buena práctica cerrarlo también después de dup2.
+    // close(fileout); // Buena práctica cerrarlo también después de dup2.
+
+	// (Paso P5: Ejecutar el segundo comando)
+    execute(argv[3], envp); // argv[3] es cmd2.
 }
 
 int	main(int argc, char **argv, char **envp)
