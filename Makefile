@@ -6,50 +6,47 @@
 #    By: dreinoso <marvin@42.fr>                    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/05/09 06:34:57 by dreinoso          #+#    #+#              #
-#    Updated: 2025/05/09 06:35:00 by dreinoso         ###   ########.fr        #
+#    Updated: 2025/05/20 21:43:37 by dreinoso         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
 NAME = pipex
 
-SRCS = pipe.c \
-		child_processes.c \
-		error_handling.c \
-		com,,and_utils.c
+CC = gcc
+
+CFLAGS = -Wall -Wextra -Werror -g
+
+RM = rm -rf
 
 LIBFT_DIR = libft
-LIBFT = $(LIBFT_DIR)/libft.a
 
-INCLUDES = - I. -I$(LIBFT_DIR)
+LIBTF_LIB = $(LIBFT_DIR)/libft.a
 
-CC = cc
-CFLAGS = -Wall -Wextra -Werror
+SRCS = pipex.c\
+       pipex_utils.c
 
 OBJS = $(SRCS:.c=.o)
 
-all: $(NAME)
-$(CC) $(CFLAGS) $(OBJS) $(LIBFT) -o $(NAME)
+all: $(NAME) $(LIBFT_LIB)
 
-$(LIBFT):
-	@make -C $(LIBFT_DIR)
+$(NAME): $(OBJS) $(LIBFT_LIB)
+	$(CC) $(CFLAGS) $(OBJS) -L$(LIBFT_DIR) -lft -o $(NAME)
 
-%.o: %.c
-$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+$(LIBFT_LIB):
+	@$(MAKE) -C $(LIBFT_DIR)
+
+$(OBJS): %.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	@make clean -c $(LIBFT_DIR)
-	@rm -f $(NAME)
+	$(RM) $(OBJS)
+	@$(MAKE) -C $(LIBFT_DIR) clean
 
 fclean: clean
-	@make fclean -c $(LIBFT_DIR)
-	@rm -f $(NAME)
+	$(RM) $(NAME)
+	$(RM) $(LIBFT_LIB)
+	@$(MAKE) -C $(LIBFT_DIR) fclean
 
 re: fclean all
-# Regla para bonus (si implementas la parte bonus)
-# SRCS_BONUS = pipex_bonus.c ...
-# OBJS_BONUS = $(SRCS_BONUS:.c=.o)
-# bonus: $(OBJS_BONUS) $(LIBFT)
-# 	$(CC) $(CFLAGS) $(OBJS_BONUS) $(LIBFT) -o $(NAME)_bonus
-# clean: ... rm -f $(OBJS_BONUS)
-# fclean: ... rm -f $(NAME)_bonus
-.PHONY: all clean fclean re bonus
+
+.PHONY: all clean fclean re $(LIBFT_LIB)
