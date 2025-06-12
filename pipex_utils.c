@@ -6,44 +6,84 @@
 /*   By: dreinoso <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/15 17:32:04 by dreinoso          #+#    #+#             */
-/*   Updated: 2025/05/20 18:40:18 by dreinoso         ###   ########.fr       */
+/*   Updated: 2025/06/08 17:24:16 by dreinoso         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "pipex.h"
 
+char	**get_paths(char **envp)
+{
+	int	i;
+
+	i = 0;
+	while (envp[i] && ft_strnstr(envp[i], "PATH=", 5) == 0)
+		i++;
+	if (!envp[i])
+		return (NULL);
+	return (ft_split(envp[i] + 5, ':'));
+}
+
 char	*find_path(char *cmd, char **envp)
 {
 	char	**paths;
 	char	*path;
+	char	*tmp;
 	int		i;
-	char	*part_path;
 
-	i = 0;
-	while (ft_strnstr(envp[i], "PATH", 4) == 0)
-		i++;
-	paths = ft_split(envp[i] + 5, ':');
-	i = 0;
-	while (paths[i])
-	{
-		part_path = ft_strjoin(paths[i], "/");
-		path = ft_strjoin(part_path, cmd);
-		free(part_path);
-		if (access(path, F_OK) == 0)
-			return (path);
-		free(path);
-		i++;
-	}
+	if (ft_strchr(cmd, '/'))
+		return (ft_strdup(cmd));
+	paths = get_paths(envp);
+	if (!paths)
+		return (NULL);
 	i = -1;
 	while (paths[++i])
-		free(paths[i]);
-	free(paths);
-	return (0);
+	{
+		tmp = ft_strjoin(paths[i], "/");
+		path = ft_strjoin(tmp, cmd);
+		free(tmp);
+		if (access(path, F_OK) == 0)
+			return (free_split(paths), path);
+		free(path);
+	}
+	return (free_split(paths), NULL);
 }
 
-void	error(void)
+void	free_split(char **split)
 {
-	perror("\033[31mError");
+	int		i;
+
+	i = 0;
+	if (!split)
+		return ;
+	while (split[i])
+		free(split[i++]);
+	free(split);
+}
+
+void	error(char *cmd, int not_found)
+{
+	if (not_found)
+	{
+		write(2, "pipex: command not found\n", 25);
+		if (cmd && cmd[0])
+		{
+			write(2, "pipex: command not found:\n", 26);
+			write(2, cmd, strlen(cmd));
+		}
+		exit(127);
+	}
+	else
+	{
+		if (cmd && cmd[0])
+		{
+			write(2, "pipex: no such file or directory: ", 35);
+			write(2, cmd, strlen(cmd));
+			write(2, "\n", 1);
+		}
+		else
+			write(2, "pipex: no such file or directory\n", 33);
+	}
 	exit(EXIT_FAILURE);
 }
 
@@ -53,43 +93,24 @@ void	execute(char *argv, char **envp)
 	int		i;
 	char	*path;
 
-	i = -1;
-	cmd = ft_split(argv, ' ');
-	path = find_path(cmd[0], envp);
-	if (!path)
-	{
-		while (cmd[++i])
-			free(cmd[i]);
-		free(cmd);
-		error();
-	}
-	if (execve(path, cmd, envp) == -1)
-		error();
-}
-
-int	get_next_line(char **line)
-{
-	char	*buffer;
-	int		i;
-	int		r;
-	char	c;
-
 	i = 0;
-	r = 0;
-	buffer = (char *)malloc(10000);
-	if (!buffer)
-		return (-1);
-	r = read(0, &c, 1);
-	while (r && c != '\n' && c != '\0')
+	cmd = ft_split(argv, ' ');
+	if (!cmd || !cmd[0])
 	{
-		if (c != '\n' && c != '\0')
-			buffer[i] = c;
-		i++;
-		r = read(0, &c, 1);
+		while (cmd && cmd[i])
+			free(cmd[i++]);
+		free(cmd);
+		error("", 1);
 	}
-	buffer[i] = '\n';
-	buffer[++i] = '\0';
-	*line = buffer;
-	free(buffer);
-	return (r);
+	path = find_path(cmd[0], envp);
+	if (!path || execve(path, cmd, envp) == -1)
+	{
+		while (cmd[i])
+			free(cmd[i++]);
+		free(cmd);
+		error(cmd[0], !path);
+	}
+	while (cmd[i])
+		free(cmd[i++]);
+	free(cmd);
 }
